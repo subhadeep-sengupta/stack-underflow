@@ -5,6 +5,7 @@ import createAnswerCollection from "./answer.collection";
 import createCommentCollection from "./comment.collection";
 import createVoteCollection from "./vote.collection";
 import { databases } from "./config";
+import env from "@/app/env";
 
 export default async function getOrCreateDb() {
   try {

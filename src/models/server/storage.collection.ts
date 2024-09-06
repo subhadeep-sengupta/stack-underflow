@@ -1,10 +1,10 @@
 import { Permission } from "node-appwrite";
 import { db, questionAttachmentBucket } from "../name";
-import { databases, storage } from "./config";
+import { storage } from "./config";
 
 export default async function getOrCreateStorage() {
   try {
-    storage.getBucket(questionAttachmentBucket);
+    await storage.getBucket(questionAttachmentBucket);
     console.log("Attchment Bucket Found");
   } catch (error) {
     try {
