@@ -7,7 +7,7 @@ import {
 import { databases, user } from "@/models/server/config";
 import { UserPref } from "@/Store/Auth";
 import { NextRequest, NextResponse } from "next/server";
-import { Query } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +47,41 @@ export async function POST(request: NextRequest) {
     }
 
     if (response.documents[0]?.voteStatus !== voteStatus) {
+      const doc = await databases.createDocument(
+        db,
+        voteCollection,
+        ID.unique(),
+        {
+          type,
+          typeId,
+          voteStatus,
+        }
+      );
+
+      const qustionOrAnswer = await databases.getDocument(
+        db,
+        type === "questions" ? questionCollection : answerCollection,
+        typeId
+      );
+      const authorPefs = await user.getPrefs<UserPref>(
+        qustionOrAnswer.authorId
+      );
+
+      if (response.documents[0]) {
+        await user.updatePrefs<UserPref>(qustionOrAnswer.authorId, {
+          reputation:
+            response.documents[0].voteStatus === "upvoted"
+              ? Number(authorPefs.reputation) - 1
+              : Number(authorPefs.reputation) + 1,
+        });
+      } else {
+        await user.updatePrefs<UserPref>(qustionOrAnswer.authorId, {
+          reputation:
+            voteStatus === "upvoted"
+              ? Number(authorPefs.reputation) + 1
+              : Number(authorPefs.reputation) - 1,
+        });
+      }
     }
 
     const [upvotes, downvotes] = await Promise.all([
@@ -54,14 +89,14 @@ export async function POST(request: NextRequest) {
         Query.equal("type", type),
         Query.equal("typeId", typeId),
         Query.equal("voteStatus", "upvoted"),
-        Query.equal("voteStatus", voteStatus),
+        Query.equal("votedById", votedById),
         Query.limit(1),
       ]),
       databases.listDocuments(db, voteCollection, [
         Query.equal("type", type),
         Query.equal("typeId", typeId),
         Query.equal("voteStatus", "downvoted"),
-        Query.equal("voteStatus", voteStatus),
+        Query.equal("votedById", votedById),
         Query.limit(1),
       ]),
     ]);
