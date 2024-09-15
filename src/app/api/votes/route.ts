@@ -82,6 +82,32 @@ export async function POST(request: NextRequest) {
               : Number(authorPefs.reputation) - 1,
         });
       }
+      const [upvotes, downvotes] = await Promise.all([
+        databases.listDocuments(db, voteCollection, [
+          Query.equal("type", type),
+          Query.equal("typeId", typeId),
+          Query.equal("voteStatus", "upvoted"),
+          Query.equal("votedById", votedById),
+          Query.limit(1), // for optimization as we only need total
+        ]),
+        databases.listDocuments(db, voteCollection, [
+          Query.equal("type", type),
+          Query.equal("typeId", typeId),
+          Query.equal("voteStatus", "downvoted"),
+          Query.equal("votedById", votedById),
+          Query.limit(1), // for optimization as we only need total
+        ]),
+      ]);
+
+      return NextResponse.json(
+        {
+          data: { document: doc, voteResult: upvotes.total - downvotes.total },
+          message: response.documents[0] ? "Vote Status Updated" : "Voted",
+        },
+        {
+          status: 201,
+        }
+      );
     }
 
     const [upvotes, downvotes] = await Promise.all([
@@ -105,7 +131,7 @@ export async function POST(request: NextRequest) {
       {
         data: {
           document: null,
-          voteResult: (upvotes.total = downvotes.total),
+          voteResult: upvotes.total - downvotes.total,
         },
         message: "vote Handled",
       },
